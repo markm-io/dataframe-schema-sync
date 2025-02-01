@@ -46,10 +46,9 @@ docs = [
 
 [tool.ruff]
 target-version = "py39"
-line-length = 88
+line-length = 120
 lint.select = [
   "B",   # flake8-bugbear
-  "D",   # flake8-docstrings
   "C4",  # flake8-comprehensions
   "S",   # flake8-bandit
   "F",   # pyflake
@@ -77,6 +76,7 @@ lint.per-file-ignores."tests/**/*" = [
   "D103",
   "D104",
   "S101",
+  "E501"  # Ignore line length errors in tests
 ]
 lint.isort.known-first-party = [ "dataframe_schema_sync", "tests" ]
 

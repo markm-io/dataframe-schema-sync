@@ -14,9 +14,13 @@ on:
       - labeled
   workflow_dispatch:
 
+permissions:
+  issues: write
+  pull-requests: write
+
 jobs:
   issue-manager:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: tiangolo/issue-manager@0.5.1
         with:
