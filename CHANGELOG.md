@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.0 (2025-02-02)
+
+### Features
+
+- Add schema synchronization with yaml support and enhance type inference ([`cafb11d`](https://github.com/markm-io/dataframe-schema-sync/commit/cafb11dde78ea6c74e6264b9712a574613130e63))
+
 ## v0.1.0 (2025-02-02)
 
 ### Features
