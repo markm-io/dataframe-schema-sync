@@ -26,6 +26,10 @@ classifiers = [
 ]
 
 dependencies = [
+    "pandas>=2.2.3",
+    "psycopg2-binary>=2.9.10",
+    "pyyaml>=6.0.2",
+    "sqlalchemy>=2.0.37",
 ]
 urls."Bug Tracker" = "https://github.com/markm-io/dataframe-schema-sync/issues"
 urls.Changelog = "https://github.com/markm-io/dataframe-schema-sync/blob/main/CHANGELOG.md"
@@ -34,8 +38,10 @@ urls.repository = "https://github.com/markm-io/dataframe-schema-sync"
 
 [dependency-groups]
 dev = [
+  "mypy>=1.14.1",
   "pytest>=8,<9",
   "pytest-cov>=6,<7",
+  "types-pyyaml>=6.0.12.20241230",
 ]
 docs = [
   "furo>=2023.5.20; python_version>='3.11'",
