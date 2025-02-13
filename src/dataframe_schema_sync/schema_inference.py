@@ -1,3 +1,4 @@
+import json
 import logging
 import warnings
 from email.utils import parsedate_to_datetime
@@ -323,6 +324,8 @@ class SchemaInference:
                 df[col] = pd.to_numeric(df[col], errors="coerce").astype(float)
             elif isinstance(sql_type, Boolean):
                 df[col] = df[col].astype(bool)
+            elif isinstance(sql_type, JSON):
+                df[col] = df[col].apply(lambda x: json.loads(x) if isinstance(x, str) else x)
             else:
                 df[col] = df[col].astype(str)
 
