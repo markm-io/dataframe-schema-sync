@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.4.0 (2025-02-13)
+
+### Features
+
+- Add clean_dataframe_names method using pyjanitor for column name cleaning ([`63620cd`](https://github.com/markm-io/dataframe-schema-sync/commit/63620cdf5f437dc6373399aa4feb0a1f3965449d))
+
 ## v0.3.0 (2025-02-13)
 
 ### Features
