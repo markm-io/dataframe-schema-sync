@@ -195,7 +195,7 @@ class SchemaInference:
     def sync_schema(
         df: pd.DataFrame,
         schema_file: Union[str, Path],
-        sync_method: Optional[str] = None,
+        sync_method: Optional[str] = "update",
         schema_name: Optional[str] = None,
         mapping_key: str = "columns",
     ) -> dict[str, Any]:
@@ -203,45 +203,53 @@ class SchemaInference:
         Synchronizes a schema file with the current DataFrame. The schema is nested under the provided
         schema_name key in the YAML file, with the column mapping stored under the given mapping_key.
 
+        If sync_method is "update", new columns in the DataFrame will be added to the existing schema.
+        If sync_method is "overwrite", the schema for the mapping_key will be completely replaced with the new schema.
+
         Args:
             df (pd.DataFrame): The input DataFrame.
             schema_file (str or Path): Path to an existing schema file.
-            sync_method (str): Either "update" or "overwrite". If provided without schema_file, raises an error.
+            sync_method (str): Either "update" or "overwrite". Defaults to "overwrite".
             schema_name (str): The parent key to use for the schema in the YAML file (required).
             mapping_key (str): The key under which the schema items are stored. Default is "columns".
 
         Returns:
             dict: The updated schema mapping column names to SQLAlchemy types.
+
+        Raises:
+            ValueError: If sync_method is not one of the allowed values or schema_name is None.
         """
-        if sync_method and not schema_file:
-            raise ValueError("sync_method cannot be used without specifying schema_file.")
-
-        existing_schema = {}
-        schema_path = Path(schema_file)
-        if schema_path.exists():
-            if schema_name is not None:
-                existing_schema = SchemaInference.load_schema_from_yaml(schema_path, schema_name, mapping_key)
-            else:
-                raise ValueError("schema_name cannot be None")
-
-        # If updating, only process columns not already in the schema; else process all columns.
-        new_columns = df.columns
-        if sync_method == "update" and existing_schema:
-            new_columns = [col for col in df.columns if col not in existing_schema]
+        if sync_method not in ("update", "overwrite"):
+            raise ValueError("sync_method must be either 'update' or 'overwrite'")
 
         dtype_map = {}
-        for col in new_columns:
-            sql_type, _ = SchemaInference.infer_sqlalchemy_type(df[col])
-            dtype_map[col] = sql_type
+        schema_path = Path(schema_file)
 
-        if sync_method == "update" and existing_schema:
-            dtype_map = {**existing_schema, **dtype_map}
+        if sync_method == "update":
+            # Load existing schema if the file exists
+            existing_schema = {}
+            if schema_path.exists():
+                if schema_name is None:
+                    raise ValueError("schema_name cannot be None when updating schema")
+                existing_schema = SchemaInference.load_schema_from_yaml(schema_path, schema_name, mapping_key)
+            # Process only columns that are not already in the existing schema
+            new_columns = [col for col in df.columns if col not in existing_schema] if existing_schema else df.columns
+            for col in new_columns:
+                sql_type, _ = SchemaInference.infer_sqlalchemy_type(df[col])
+                dtype_map[col] = sql_type
+            # Merge with existing schema if available
+            dtype_map = {**existing_schema, **dtype_map} if existing_schema else dtype_map
 
-        if schema_name is not None:
-            SchemaInference.save_schema_to_yaml(dtype_map, schema_file, schema_name, mapping_key)
-        else:
+        elif sync_method == "overwrite":
+            # Overwrite the schema entirely with the new schema
+            for col in df.columns:
+                sql_type, _ = SchemaInference.infer_sqlalchemy_type(df[col])
+                dtype_map[col] = sql_type
+
+        if schema_name is None:
             raise ValueError("schema_name cannot be None")
 
+        SchemaInference.save_schema_to_yaml(dtype_map, schema_file, schema_name, mapping_key)
         return dtype_map
 
     @staticmethod
