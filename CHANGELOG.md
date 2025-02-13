@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.11.0 (2025-02-13)
+
+### Features
+
+- Add json type handling in schema inference for dataframe conversion ([`f416273`](https://github.com/markm-io/dataframe-schema-sync/commit/f416273aecb7cc16e637322cb5d7d9403856fbb3))
+
 ## v0.10.0 (2025-02-13)
 
 ### Features
