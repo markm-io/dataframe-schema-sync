@@ -340,4 +340,4 @@ class SchemaInference:
             logger.error("pyjanitors is required for cleaning names. Please install it using 'pip install pyjanitor'")
             raise e
 
-        return df.clean_names(case=case, truncate=truncate)
+        return df.clean_names(case_type=case, truncate_limit=truncate)
