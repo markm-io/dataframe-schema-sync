@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.0 (2025-02-13)
+
+### Features
+
+- Update clean_names method parameters for consistency in dataframe name cleaning ([`8220d39`](https://github.com/markm-io/dataframe-schema-sync/commit/8220d39460b30ace5a6c8b2c639802d95870176c))
+
 ## v0.6.0 (2025-02-13)
 
 ### Features
