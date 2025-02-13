@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.0 (2025-02-13)
+
+### Features
+
+- Update sync_schema method to support dynamic sync_method with default value ([`d05444c`](https://github.com/markm-io/dataframe-schema-sync/commit/d05444cb86224aa9d191ededfe7df05c11a705a0))
+
 ## v0.5.0 (2025-02-13)
 
 ### Features
