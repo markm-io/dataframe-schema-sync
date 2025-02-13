@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.8.0 (2025-02-13)
+
+### Features
+
+- Enhance schema synchronization with dynamic sync_method and improved error handling ([`b9c648b`](https://github.com/markm-io/dataframe-schema-sync/commit/b9c648be321cd8ed26069ca03446565f56be1f25))
+
 ## v0.7.0 (2025-02-13)
 
 ### Features
