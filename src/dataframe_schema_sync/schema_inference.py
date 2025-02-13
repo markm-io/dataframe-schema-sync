@@ -293,3 +293,27 @@ class SchemaInference:
                 df[col] = df[col].astype(str)
 
         return df, dtype_map
+
+    @staticmethod
+    def clean_dataframe_names(df: pd.DataFrame, case: str = "snake", truncate: int = 55) -> pd.DataFrame:
+        """
+        Clean the column names of a DataFrame using pyjanitors' clean_names method.
+
+        Args:
+            df (pd.DataFrame): The DataFrame whose column names should be cleaned.
+            case (str): The naming convention to apply. Default is "snake".
+            truncate (int): The maximum length of the column names. Default is 55.
+
+        Returns:
+            pd.DataFrame: A new DataFrame with cleaned column names.
+
+        Raises:
+            ImportError: If pyjanitors is not installed.
+        """
+        try:
+            import janitor  # noqa: F401
+        except ImportError as e:
+            logger.error("pyjanitors is required for cleaning names. Please install it using 'pip install pyjanitor'")
+            raise e
+
+        return df.clean_names(case=case, truncate=truncate)
