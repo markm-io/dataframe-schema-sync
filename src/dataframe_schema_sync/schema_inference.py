@@ -29,40 +29,52 @@ class SchemaInference:
     }
 
     @staticmethod
-    def save_schema_to_yaml(dtype_map: dict[str, Any], filename: Union[str, Path], schema_name: str) -> None:
+    def save_schema_to_yaml(
+        dtype_map: dict[str, Any],
+        filename: Union[str, Path],
+        schema_name: str,
+        mapping_key: str = "columns",
+    ) -> None:
         """
         Save dtype_map to a YAML file, storing SQLAlchemy types as text strings.
-        The YAML content will be nested under the provided schema_name key and further under the 'columns' key.
+        The YAML content will be nested under the provided schema_name key and further under the given mapping_key.
+        This allows dynamic naming (e.g. "rename" instead of "columns").
 
         Args:
             dtype_map (dict): Dictionary mapping column names to SQLAlchemy types.
             filename (str or Path): Path to the YAML file.
             schema_name (str): The parent key to use in the YAML file (required).
+            mapping_key (str): The key under which the schema items are stored. Default is "columns".
         """
         dtype_map_serializable: dict[str, str] = {
             col: "TEXT" if isinstance(sql_type, Text) else str(sql_type) for col, sql_type in dtype_map.items()
         }
 
-        content = {schema_name: {"columns": dtype_map_serializable}}
+        content = {schema_name: {mapping_key: dtype_map_serializable}}
 
         with open(filename, "w", encoding="utf-8") as file:
             yaml.dump(content, file, sort_keys=False)
 
     @staticmethod
-    def load_schema_from_yaml(filename: Union[str, Path], schema_name: str) -> dict[str, Any]:
+    def load_schema_from_yaml(
+        filename: Union[str, Path],
+        schema_name: str,
+        mapping_key: str = "columns",
+    ) -> dict[str, Any]:
         """
         Load schema from a YAML file and convert stored text strings back into SQLAlchemy types.
-        The method looks for the schema under the provided schema_name key and within its 'columns' mapping.
+        The method looks for the schema under the provided schema_name key and within its dynamic mapping_key.
 
         Args:
             filename (str or Path): Path to the YAML file.
             schema_name (str): The parent key under which the schema is stored (required).
+            mapping_key (str): The key under which the schema items are stored. Default is "columns".
 
         Returns:
             dict: Dictionary mapping column names to SQLAlchemy types.
 
         Raises:
-            KeyError: If the provided schema_name or the 'columns' key is not found in the YAML file.
+            KeyError: If the provided schema_name or the mapping_key is not found in the YAML file.
         """
         with open(filename, encoding="utf-8") as file:
             loaded_content: dict[str, Any] = yaml.safe_load(file) or {}
@@ -71,9 +83,9 @@ class SchemaInference:
         if loaded_schema is None:
             raise KeyError(f"Schema '{schema_name}' not found in {filename}")
 
-        columns_mapping = loaded_schema.get("columns")
+        columns_mapping = loaded_schema.get(mapping_key)
         if columns_mapping is None:
-            raise KeyError(f"'columns' key not found under schema '{schema_name}' in {filename}")
+            raise KeyError(f"'{mapping_key}' key not found under schema '{schema_name}' in {filename}")
 
         return {
             col: SchemaInference.SQLALCHEMY_TYPE_MAP.get(sql_type or "TEXT", Text())
@@ -185,16 +197,18 @@ class SchemaInference:
         schema_file: Union[str, Path],
         sync_method: Optional[str] = None,
         schema_name: Optional[str] = None,
+        mapping_key: str = "columns",
     ) -> dict[str, Any]:
         """
         Synchronizes a schema file with the current DataFrame. The schema is nested under the provided
-        schema_name key in the YAML file, with the columns stored under the 'columns' key.
+        schema_name key in the YAML file, with the column mapping stored under the given mapping_key.
 
         Args:
             df (pd.DataFrame): The input DataFrame.
             schema_file (str or Path): Path to an existing schema file.
             sync_method (str): Either "update" or "overwrite". If provided without schema_file, raises an error.
             schema_name (str): The parent key to use for the schema in the YAML file (required).
+            mapping_key (str): The key under which the schema items are stored. Default is "columns".
 
         Returns:
             dict: The updated schema mapping column names to SQLAlchemy types.
@@ -206,7 +220,7 @@ class SchemaInference:
         schema_path = Path(schema_file)
         if schema_path.exists():
             if schema_name is not None:
-                existing_schema = SchemaInference.load_schema_from_yaml(schema_path, schema_name)
+                existing_schema = SchemaInference.load_schema_from_yaml(schema_path, schema_name, mapping_key)
             else:
                 raise ValueError("schema_name cannot be None")
 
@@ -224,7 +238,7 @@ class SchemaInference:
             dtype_map = {**existing_schema, **dtype_map}
 
         if schema_name is not None:
-            SchemaInference.save_schema_to_yaml(dtype_map, schema_file, schema_name)
+            SchemaInference.save_schema_to_yaml(dtype_map, schema_file, schema_name, mapping_key)
         else:
             raise ValueError("schema_name cannot be None")
 
@@ -238,11 +252,12 @@ class SchemaInference:
         date_columns: Optional[Union[str, list[str]]] = None,
         schema_file: Optional[Union[str, Path]] = None,
         sync_method: Optional[str] = None,
+        mapping_key: str = "columns",
     ) -> tuple[pd.DataFrame, dict[str, Any]]:
         """
         Infer the SQLAlchemy type for each column, convert the DataFrame accordingly,
         and optionally synchronize the schema with a YAML file. The schema in the YAML file
-        will be nested under the provided schema_name key, with the column mapping stored under 'columns'.
+        will be nested under the provided schema_name key, with the column mapping stored under the given mapping_key.
 
         Args:
             df (pd.DataFrame): The input DataFrame.
@@ -251,6 +266,7 @@ class SchemaInference:
             schema_file (str or Path): Path to an existing schema file.
             sync_method (str): Either "update" or "overwrite". If provided without schema_file, raises an error.
             schema_name (str): The parent key to use for the schema in the YAML file (required).
+            mapping_key (str): The key under which the schema items are stored. Default is "columns".
 
         Returns:
             tuple: (updated DataFrame, dictionary mapping columns to SQLAlchemy types)
@@ -265,7 +281,7 @@ class SchemaInference:
 
         # Determine the schema mapping.
         if schema_file:
-            dtype_map = SchemaInference.sync_schema(df, schema_file, sync_method, schema_name)
+            dtype_map = SchemaInference.sync_schema(df, schema_file, sync_method, schema_name, mapping_key)
         else:
             dtype_map = {}
             for col in df.columns:
@@ -297,7 +313,7 @@ class SchemaInference:
     @staticmethod
     def clean_dataframe_names(df: pd.DataFrame, case: str = "snake", truncate: int = 55) -> pd.DataFrame:
         """
-        Clean the column names of a DataFrame using pyjanitors' clean_names method.
+        Clean the column names of a DataFrame using pyjanitors clean_names method.
 
         Args:
             df (pd.DataFrame): The DataFrame whose column names should be cleaned.
