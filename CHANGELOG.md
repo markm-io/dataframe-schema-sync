@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.0 (2025-02-13)
+
+### Features
+
+- Enhance yaml schema handling with nested structure and error checks ([`43db66d`](https://github.com/markm-io/dataframe-schema-sync/commit/43db66d45a024b8f033b3e599444c7a16a4e24dd))
+
+### Documentation
+
+- Change html theme to sphinx_material for documentation ([`8eb2b7f`](https://github.com/markm-io/dataframe-schema-sync/commit/8eb2b7f4cf2706e116be4138f78b7f54dcf53fca))
+- Change html theme to sphinx_material for documentation ([`cec0334`](https://github.com/markm-io/dataframe-schema-sync/commit/cec0334612bbea022d7da3c1f0b08943460358ab))
+- Change html theme to sphinx_material for documentation ([`8946f16`](https://github.com/markm-io/dataframe-schema-sync/commit/8946f16d6150044ae386e7d97f0419409133a193))
+
 ## v0.2.0 (2025-02-02)
 
 ### Features
