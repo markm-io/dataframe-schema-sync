@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.10.0 (2025-02-13)
+
+### Features
+
+- Add load_config_from_yaml method for dynamic yaml schema loading and improve error handling ([`cf186aa`](https://github.com/markm-io/dataframe-schema-sync/commit/cf186aaf7602ea07049bc2d18c112902559153f4))
+
 ## v0.9.0 (2025-02-13)
 
 ### Features
