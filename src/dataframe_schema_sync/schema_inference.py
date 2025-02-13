@@ -21,6 +21,7 @@ class SchemaInference:
 
     SQLALCHEMY_TYPE_MAP: ClassVar[dict[str, Any]] = {
         "TIMESTAMP(timezone=True)": DateTime(timezone=True),
+        "DATETIME": DateTime(timezone=True),
         "INTEGER": Integer(),
         "FLOAT": Float(),
         "TEXT": Text(),
@@ -91,7 +92,7 @@ class SchemaInference:
     def load_schema_from_yaml(
         filename: Union[str, Path],
         schema_name: str,
-        mapping_key: str = "columns",
+        mapping_key: str,
     ) -> dict[str, Any]:
         """
         Load schema from a YAML file and convert stored text strings back into SQLAlchemy types.
@@ -100,7 +101,7 @@ class SchemaInference:
         Args:
             filename (str or Path): Path to the YAML file.
             schema_name (str): The parent key under which the schema is stored.
-            mapping_key (str): The key under which the schema items are stored. Default is "columns".
+            mapping_key (str): The key under which the schema items are stored.
 
         Returns:
             dict: Dictionary mapping column names to SQLAlchemy types.
@@ -125,6 +126,44 @@ class SchemaInference:
         }
 
     @staticmethod
+    def load_config_from_yaml(
+        filename: Union[str, Path],
+        schema_name: str,
+        mapping_key: str,
+    ) -> dict[str, Any]:
+        """
+        Load config from a YAML file and convert stored text strings back into SQLAlchemy types.
+        The method looks for the schema under the provided schema_name key and within its dynamic mapping_key.
+
+        Args:
+            filename (str or Path): Path to the YAML file.
+            schema_name (str): The parent key under which the schema is stored.
+            mapping_key (str): The key under which the schema items are stored.
+
+        Returns:
+            dict: Dictionary mapping column names to SQLAlchemy types.
+
+        Raises:
+            KeyError: If the provided schema_name or the mapping_key is not found in the YAML file.
+        """
+        with open(filename, encoding="utf-8") as file:
+            loaded_content: dict[str, Any] = yaml.safe_load(file) or {}
+
+        loaded_schema = loaded_content.get(schema_name)
+        if loaded_schema is None:
+            raise KeyError(f"Schema '{schema_name}' not found in {filename}")
+
+        columns_mapping = loaded_schema.get(mapping_key)
+        if columns_mapping is None:
+            raise KeyError(f"'{mapping_key}' key not found under schema '{schema_name}' in {filename}")
+
+        return columns_mapping
+        # return {
+        #     col: SchemaInference.SQLALCHEMY_TYPE_MAP.get(sql_type or "TEXT", Text())
+        #     for col, sql_type in columns_mapping.items()
+        # }
+
+    @staticmethod
     def detect_and_convert_datetime(series: pd.Series) -> tuple[pd.Series, bool]:
         """
         Detects datetime format in a Pandas Series and converts it to datetime64[ns, UTC].
@@ -142,7 +181,7 @@ class SchemaInference:
             # Attempt ISO 8601 conversion
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", UserWarning)
-                parsed_dates = pd.to_datetime(series, errors="coerce", utc=True)
+                parsed_dates = pd.to_datetime(non_null, errors="coerce", utc=True)
             # Check only the non-null values.
             if parsed_dates[series.notna()].notna().all():
                 return parsed_dates, True
@@ -160,6 +199,17 @@ class SchemaInference:
                 return parsed_dates, True
         except Exception as e:
             logger.debug(f"Error parsing RFC 2822 datetime format: {e}")
+
+        try:
+            parsed_dates = series.apply(
+                lambda date_str: pd.NaT
+                if date_str == "0001-01-01T00:00:00Z"
+                else pd.to_datetime(date_str, errors="coerce", utc=True)
+            )
+            if parsed_dates[series.apply(lambda x: x != "0001-01-01T00:00:00Z")].notna().all():
+                return parsed_dates, True
+        except Exception as e:
+            logger.debug(f"Error parsing datetime using custom datetime function: {e}")
 
         # If not all non-null values can be converted, do not treat the series as datetime.
         return series, False
