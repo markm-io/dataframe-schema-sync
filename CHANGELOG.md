@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.5.0 (2025-02-13)
+
+### Features
+
+- Allow dynamic mapping key for yaml schema saving and loading ([`ba74bca`](https://github.com/markm-io/dataframe-schema-sync/commit/ba74bcaf855ab831f1841546f3144fcc12a0da7c))
+
 ## v0.4.0 (2025-02-13)
 
 ### Features
