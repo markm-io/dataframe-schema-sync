@@ -33,24 +33,56 @@ class SchemaInference:
         dtype_map: dict[str, Any],
         filename: Union[str, Path],
         schema_name: str,
-        mapping_key: str = "columns",
+        mapping_key: str,
+        sync_method: str,
     ) -> None:
         """
         Save dtype_map to a YAML file, storing SQLAlchemy types as text strings.
         The YAML content will be nested under the provided schema_name key and further under the given mapping_key.
-        This allows dynamic naming (e.g. "rename" instead of "columns").
+        The sync_method parameter determines how the new schema is saved:
+          - "update": Only new columns (not already present under mapping_key) are added.
+          - "overwrite": The mapping for mapping_key is completely replaced by the new schema.
 
         Args:
             dtype_map (dict): Dictionary mapping column names to SQLAlchemy types.
             filename (str or Path): Path to the YAML file.
-            schema_name (str): The parent key to use in the YAML file (required).
-            mapping_key (str): The key under which the schema items are stored. Default is "columns".
+            schema_name (str): The parent key to use in the YAML file.
+            mapping_key (str): The key under which the schema items are stored.
+            sync_method (str): Must be either "update" or "overwrite".
+
+        Raises:
+            ValueError: If sync_method is not one of the allowed values.
         """
-        dtype_map_serializable: dict[str, str] = {
+        if sync_method not in ("update", "overwrite"):
+            raise ValueError("sync_method must be either 'update' or 'overwrite'")
+
+        schema_path = Path(filename)
+        # Serialize the dtype_map (convert SQLAlchemy types to strings)
+        new_mapping = {
             col: "TEXT" if isinstance(sql_type, Text) else str(sql_type) for col, sql_type in dtype_map.items()
         }
 
-        content = {schema_name: {mapping_key: dtype_map_serializable}}
+        if schema_path.exists():
+            with open(filename, encoding="utf-8") as file:
+                content: dict[str, Any] = yaml.safe_load(file) or {}
+        else:
+            content = {}
+
+        if schema_name in content:
+            # There is an existing schema block
+            existing_mapping = content[schema_name].get(mapping_key, {})
+            if sync_method == "update":
+                # Only add new columns that are not already defined
+                merged_mapping = existing_mapping.copy()
+                for col, val in new_mapping.items():
+                    if col not in merged_mapping:
+                        merged_mapping[col] = val
+                content[schema_name][mapping_key] = merged_mapping
+            else:  # overwrite
+                content[schema_name][mapping_key] = new_mapping
+        else:
+            # No existing schema block; add one
+            content[schema_name] = {mapping_key: new_mapping}
 
         with open(filename, "w", encoding="utf-8") as file:
             yaml.dump(content, file, sort_keys=False)
@@ -67,7 +99,7 @@ class SchemaInference:
 
         Args:
             filename (str or Path): Path to the YAML file.
-            schema_name (str): The parent key under which the schema is stored (required).
+            schema_name (str): The parent key under which the schema is stored.
             mapping_key (str): The key under which the schema items are stored. Default is "columns".
 
         Returns:
@@ -97,8 +129,8 @@ class SchemaInference:
         """
         Detects datetime format in a Pandas Series and converts it to datetime64[ns, UTC].
         Supports:
-        - ISO 8601 formats (YYYY-MM-DDTHH:MM:SS.sssZ)
-        - RFC 2822 (email/HTTP format)
+          - ISO 8601 formats (YYYY-MM-DDTHH:MM:SS.sssZ)
+          - RFC 2822 (email/HTTP format)
         Returns the converted series and a boolean indicating success.
         """
         # Use only non-null values for detection.
@@ -202,54 +234,37 @@ class SchemaInference:
         """
         Synchronizes a schema file with the current DataFrame. The schema is nested under the provided
         schema_name key in the YAML file, with the column mapping stored under the given mapping_key.
-
-        If sync_method is "update", new columns in the DataFrame will be added to the existing schema.
-        If sync_method is "overwrite", the schema for the mapping_key will be completely replaced with the new schema.
+        This method infers the SQLAlchemy types for the DataFrame columns and then delegates saving to
+        save_schema_to_yaml, which handles merging (if sync_method is "update") or replacing (if "overwrite").
 
         Args:
             df (pd.DataFrame): The input DataFrame.
             schema_file (str or Path): Path to an existing schema file.
-            sync_method (str): Either "update" or "overwrite". Defaults to "overwrite".
-            schema_name (str): The parent key to use for the schema in the YAML file (required).
-            mapping_key (str): The key under which the schema items are stored. Default is "columns".
+            sync_method (str): Either "update" or "overwrite". Defaults to "update".
+            schema_name (str): The parent key to use for the schema in the YAML file.
+            mapping_key (str): The key under which the schema items are stored.
 
         Returns:
-            dict: The updated schema mapping column names to SQLAlchemy types.
+            dict: The schema mapping column names to SQLAlchemy types.
 
         Raises:
-            ValueError: If sync_method is not one of the allowed values or schema_name is None.
+            ValueError: If sync_method is invalid or schema_name is None.
         """
-        if sync_method not in ("update", "overwrite"):
-            raise ValueError("sync_method must be either 'update' or 'overwrite'")
-
-        dtype_map = {}
-        schema_path = Path(schema_file)
-
-        if sync_method == "update":
-            # Load existing schema if the file exists
-            existing_schema = {}
-            if schema_path.exists():
-                if schema_name is None:
-                    raise ValueError("schema_name cannot be None when updating schema")
-                existing_schema = SchemaInference.load_schema_from_yaml(schema_path, schema_name, mapping_key)
-            # Process only columns that are not already in the existing schema
-            new_columns = [col for col in df.columns if col not in existing_schema] if existing_schema else df.columns
-            for col in new_columns:
-                sql_type, _ = SchemaInference.infer_sqlalchemy_type(df[col])
-                dtype_map[col] = sql_type
-            # Merge with existing schema if available
-            dtype_map = {**existing_schema, **dtype_map} if existing_schema else dtype_map
-
-        elif sync_method == "overwrite":
-            # Overwrite the schema entirely with the new schema
-            for col in df.columns:
-                sql_type, _ = SchemaInference.infer_sqlalchemy_type(df[col])
-                dtype_map[col] = sql_type
-
         if schema_name is None:
             raise ValueError("schema_name cannot be None")
 
-        SchemaInference.save_schema_to_yaml(dtype_map, schema_file, schema_name, mapping_key)
+        # Compute dtype_map for all DataFrame columns
+        dtype_map = {}
+        for col in df.columns:
+            sql_type, converted_series = SchemaInference.infer_sqlalchemy_type(df[col])
+            dtype_map[col] = sql_type
+            df[col] = converted_series
+
+        # Delegate saving (and merging/overwriting) to save_schema_to_yaml
+        if sync_method is None:
+            raise ValueError("sync_method cannot be None")
+
+        SchemaInference.save_schema_to_yaml(dtype_map, schema_file, schema_name, mapping_key, sync_method)
         return dtype_map
 
     @staticmethod
@@ -273,8 +288,8 @@ class SchemaInference:
             date_columns (str or list of str): Columns that should always be parsed as dates.
             schema_file (str or Path): Path to an existing schema file.
             sync_method (str): Either "update" or "overwrite". If provided without schema_file, raises an error.
-            schema_name (str): The parent key to use for the schema in the YAML file (required).
-            mapping_key (str): The key under which the schema items are stored. Default is "columns".
+            schema_name (str): The parent key to use for the schema in the YAML file.
+            mapping_key (str): The key under which the schema items are stored.
 
         Returns:
             tuple: (updated DataFrame, dictionary mapping columns to SQLAlchemy types)
@@ -289,6 +304,8 @@ class SchemaInference:
 
         # Determine the schema mapping.
         if schema_file:
+            if sync_method is None:
+                raise ValueError("sync_method must be provided if schema_file is specified")
             dtype_map = SchemaInference.sync_schema(df, schema_file, sync_method, schema_name, mapping_key)
         else:
             dtype_map = {}
