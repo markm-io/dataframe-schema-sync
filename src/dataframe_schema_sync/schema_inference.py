@@ -224,58 +224,10 @@ class SchemaInference:
         return Text(), series.astype(str)
 
     @staticmethod
-    def sync_schema(
-        df: pd.DataFrame,
-        schema_file: Union[str, Path],
-        sync_method: Optional[str] = "update",
-        schema_name: Optional[str] = None,
-        mapping_key: str = "columns",
-    ) -> dict[str, Any]:
-        """
-        Synchronizes a schema file with the current DataFrame. The schema is nested under the provided
-        schema_name key in the YAML file, with the column mapping stored under the given mapping_key.
-        This method infers the SQLAlchemy types for the DataFrame columns and then delegates saving to
-        save_schema_to_yaml, which handles merging (if sync_method is "update") or replacing (if "overwrite").
-
-        Args:
-            df (pd.DataFrame): The input DataFrame.
-            schema_file (str or Path): Path to an existing schema file.
-            sync_method (str): Either "update" or "overwrite". Defaults to "update".
-            schema_name (str): The parent key to use for the schema in the YAML file.
-            mapping_key (str): The key under which the schema items are stored.
-
-        Returns:
-            dict: The schema mapping column names to SQLAlchemy types.
-
-        Raises:
-            ValueError: If sync_method is invalid or schema_name is None.
-        """
-        if schema_name is None:
-            raise ValueError("schema_name cannot be None")
-
-        # Compute dtype_map for all DataFrame columns
-        dtype_map = {}
-        for col in df.columns:
-            sql_type, converted_series = SchemaInference.infer_sqlalchemy_type(df[col])
-            dtype_map[col] = sql_type
-            df[col] = converted_series
-
-        # Delegate saving (and merging/overwriting) to save_schema_to_yaml
-        if sync_method is None:
-            raise ValueError("sync_method cannot be None")
-
-        SchemaInference.save_schema_to_yaml(dtype_map, schema_file, schema_name, mapping_key, sync_method)
-        return dtype_map
-
-    @staticmethod
     def convert_dataframe(
         df: pd.DataFrame,
         infer_dates: bool = True,
-        schema_name: Optional[str] = None,
         date_columns: Optional[Union[str, list[str]]] = None,
-        schema_file: Optional[Union[str, Path]] = None,
-        sync_method: Optional[str] = None,
-        mapping_key: str = "columns",
     ) -> tuple[pd.DataFrame, dict[str, Any]]:
         """
         Infer the SQLAlchemy type for each column, convert the DataFrame accordingly,
@@ -286,10 +238,6 @@ class SchemaInference:
             df (pd.DataFrame): The input DataFrame.
             infer_dates (bool): If True, attempts to infer datetime columns.
             date_columns (str or list of str): Columns that should always be parsed as dates.
-            schema_file (str or Path): Path to an existing schema file.
-            sync_method (str): Either "update" or "overwrite". If provided without schema_file, raises an error.
-            schema_name (str): The parent key to use for the schema in the YAML file.
-            mapping_key (str): The key under which the schema items are stored.
 
         Returns:
             tuple: (updated DataFrame, dictionary mapping columns to SQLAlchemy types)
@@ -303,18 +251,13 @@ class SchemaInference:
             date_columns = []
 
         # Determine the schema mapping.
-        if schema_file:
-            if sync_method is None:
-                raise ValueError("sync_method must be provided if schema_file is specified")
-            dtype_map = SchemaInference.sync_schema(df, schema_file, sync_method, schema_name, mapping_key)
-        else:
-            dtype_map = {}
-            for col in df.columns:
-                sql_type, converted_series = SchemaInference.infer_sqlalchemy_type(
-                    df[col], infer_dates=infer_dates or (col in date_columns), date_columns=date_columns
-                )
-                dtype_map[col] = sql_type
-                df[col] = converted_series
+        dtype_map = {}
+        for col in df.columns:
+            sql_type, converted_series = SchemaInference.infer_sqlalchemy_type(
+                df[col], infer_dates=infer_dates or (col in date_columns), date_columns=date_columns
+            )
+            dtype_map[col] = sql_type
+            df[col] = converted_series
 
         # Update the DataFrame columns based on the inferred SQLAlchemy types.
         for col, sql_type in dtype_map.items():

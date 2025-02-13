@@ -86,28 +86,3 @@ def test_convert_dataframe_empty():
     converted_df, dtype_map = schema_inference.SchemaInference.convert_dataframe(df)
     assert converted_df.empty
     assert dtype_map == {}
-
-
-def test_sync_schema_overwrite(tmp_path):
-    schema_file = tmp_path / "schema.yaml"
-    df = pd.DataFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]})
-    converted_df, dtype_map = schema_inference.SchemaInference.convert_dataframe(
-        df, schema_file=str(schema_file), sync_method="overwrite", schema_name="your_schema_name"
-    )
-    loaded_schema = schema_inference.SchemaInference.load_schema_from_yaml(schema_file, schema_name="your_schema_name")
-    for col in dtype_map:
-        assert str(dtype_map[col]) == str(loaded_schema[col])
-
-
-def test_sync_schema_update(tmp_path):
-    schema_file = tmp_path / "schema.yaml"
-    df_initial = pd.DataFrame({"a": [1, 2, 3]})
-    _, dtype_map_initial = schema_inference.SchemaInference.convert_dataframe(
-        df_initial, schema_file=str(schema_file), sync_method="overwrite", schema_name="your_schema_name"
-    )
-    df_new = pd.DataFrame({"a": [4, 5, 6], "b": ["x", "y", "z"]})
-    _, dtype_map_updated = schema_inference.SchemaInference.convert_dataframe(
-        df_new, schema_file=str(schema_file), sync_method="update", schema_name="your_schema_name"
-    )
-    assert "a" in dtype_map_updated
-    assert "b" in dtype_map_updated
