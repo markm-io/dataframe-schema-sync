@@ -7,6 +7,7 @@ from typing import Any, ClassVar, Optional, Union
 
 import pandas as pd
 import yaml  # type: ignore
+from janitor import clean_names
 from sqlalchemy import Boolean, DateTime, Float, Integer, Text
 from sqlalchemy.dialects.postgresql import JSON
 
@@ -279,6 +280,8 @@ class SchemaInference:
         df: pd.DataFrame,
         infer_dates: bool = True,
         date_columns: Optional[Union[str, list[str]]] = None,
+        case: str = "snake",
+        truncate_limit: int = 55,
     ) -> tuple[pd.DataFrame, dict[str, Any]]:
         """
         Infer the SQLAlchemy type for each column, convert the DataFrame accordingly,
@@ -289,11 +292,14 @@ class SchemaInference:
             df (pd.DataFrame): The input DataFrame.
             infer_dates (bool): If True, attempts to infer datetime columns.
             date_columns (str or list of str): Columns that should always be parsed as dates.
+            case (str): The naming convention to apply. Default is "snake".
+            truncate_limit (int): The maximum length of the column names. Default is 55.
 
         Returns:
             tuple: (updated DataFrame, dictionary mapping columns to SQLAlchemy types)
         """
         df = df.copy()
+        df = clean_names(df, case_type=case, truncate_limit=truncate_limit)
 
         # Normalize date_columns to a list if provided as a string.
         if isinstance(date_columns, str):
@@ -332,14 +338,14 @@ class SchemaInference:
         return df, dtype_map
 
     @staticmethod
-    def clean_dataframe_names(df: pd.DataFrame, case: str = "snake", truncate: int = 55) -> pd.DataFrame:
+    def clean_dataframe_names(df: pd.DataFrame, case: str = "snake", truncate_limit: int = 55) -> pd.DataFrame:
         """
         Clean the column names of a DataFrame using pyjanitors clean_names method.
 
         Args:
             df (pd.DataFrame): The DataFrame whose column names should be cleaned.
             case (str): The naming convention to apply. Default is "snake".
-            truncate (int): The maximum length of the column names. Default is 55.
+            truncate_limit (int): The maximum length of the column names. Default is 55.
 
         Returns:
             pd.DataFrame: A new DataFrame with cleaned column names.
@@ -353,4 +359,4 @@ class SchemaInference:
             logger.error("pyjanitors is required for cleaning names. Please install it using 'pip install pyjanitor'")
             raise e
 
-        return df.clean_names(case_type=case, truncate_limit=truncate)
+        return df.clean_names(case_type=case, truncate_limit=truncate_limit)
