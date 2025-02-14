@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.12.0 (2025-02-14)
+
+### Features
+
+- Enhance dataframe name cleaning with customizable case and truncate limit ([`e8b832b`](https://github.com/markm-io/dataframe-schema-sync/commit/e8b832b041bb509a80b9a647e119e8fc08657a11))
+
 ## v0.11.0 (2025-02-13)
 
 ### Features
