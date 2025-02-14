@@ -5,6 +5,7 @@ from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any, ClassVar, Optional, Union
 
+import numpy as np
 import pandas as pd
 import yaml  # type: ignore
 from janitor import clean_names
@@ -30,6 +31,61 @@ class SchemaInference:
         "JSON": JSON,
         "BOOLEAN": Boolean(),
     }
+
+    @staticmethod
+    def safe_str_conversion(x: Any) -> str:
+        """
+        Convert a value to string, returning an empty string if the value is NaN.
+
+        Args:
+            x (Any): The value to convert.
+
+        Returns:
+            str: The string representation or an empty string if x is NaN.
+        """
+        return "" if pd.isna(x) else str(x)
+
+    @staticmethod
+    def safe_json_conversion(x: Any) -> list[Any]:
+        """
+        Convert a value to a JSON object if it's a string. If the value is missing (NaN),
+        empty, or cannot be converted, return an empty array.
+
+        Args:
+            x (Any): The value to convert.
+
+        Returns:
+            list: The parsed JSON value or an empty list.
+        """
+        # If the value is a string, attempt to parse it as JSON.
+        if isinstance(x, str):
+            try:
+                return json.loads(x)
+            except Exception as e:
+                logger.debug(f"Error converting JSON string: {e}")
+                return []
+        # If the value is None, return an empty list.
+        if x is None:
+            return []
+        # For numeric types or other types, try to detect if it's missing.
+        try:
+            if pd.isna(x):
+                return []
+        except Exception as e:
+            logger.debug(f"Error checking for NaN: {e}")
+        # If x is a numpy array, check its size.
+        if isinstance(x, np.ndarray):
+            if x.size == 0:
+                return []
+            else:
+                return x
+        # If x is a list, check if it's empty.
+        if isinstance(x, list):
+            if len(x) == 0:
+                return []
+            else:
+                return x
+        return x
 
     @staticmethod
     def save_schema_to_yaml(
@@ -233,7 +289,8 @@ class SchemaInference:
         """
         non_null = series.dropna()
         if non_null.empty:
-            return Text(), series.astype(str)
+            # When there is no non-null value, default to Text and use safe conversion so NaN becomes an empty cell.
+            return Text(), series.apply(SchemaInference.safe_str_conversion)
 
         sample = non_null.iloc[0]
 
@@ -273,7 +330,7 @@ class SchemaInference:
                 return DateTime(timezone=True), converted_series
 
         # --- Fallback to text ---
-        return Text(), series.astype(str)
+        return Text(), series.apply(SchemaInference.safe_str_conversion)
 
     @staticmethod
     def convert_dataframe(
@@ -329,11 +386,15 @@ class SchemaInference:
             elif isinstance(sql_type, Float):
                 df[col] = pd.to_numeric(df[col], errors="coerce").astype(float)
             elif isinstance(sql_type, Boolean):
+                # For booleans, if the conversion might create issues with NaN,
+                # you may want to handle missing values separately.
                 df[col] = df[col].astype(bool)
             elif isinstance(sql_type, JSON):
-                df[col] = df[col].apply(lambda x: json.loads(x) if isinstance(x, str) else x)
+                # For JSON columns, use safe_json_conversion so that missing or empty values become an empty array.
+                df[col] = df[col].apply(SchemaInference.safe_json_conversion)
             else:
-                df[col] = df[col].astype(str)
+                # For text, use safe conversion so that NaN becomes an empty string.
+                df[col] = df[col].apply(SchemaInference.safe_str_conversion)
 
         return df, dtype_map
 
