@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.14.0 (2025-02-24)
+
+### Features
+
+- Add safe conversion methods for string and json handling in schema inference ([`bf88b5b`](https://github.com/markm-io/dataframe-schema-sync/commit/bf88b5b819d9e1c9a45c8f569764b7d44c3edded))
+
 ## v0.13.0 (2025-02-14)
 
 ### Features
