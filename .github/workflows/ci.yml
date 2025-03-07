@@ -66,7 +66,7 @@ jobs:
       - lint
       - commitlint
 
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment: release
     concurrency: release
     permissions:
@@ -78,11 +78,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.sha }}
-
-      - name: Checkout commit for release
-        run: |
-          git checkout -B ${{ github.ref_name }} ${{ github.sha }}
+          fetch-tags: true
+          ref: main
 
       # Do a dry run of PSR
       - name: Test release
