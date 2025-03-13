@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.16.0 (2025-03-13)
+
+### Features
+
+- Enhance datetime conversion logic in schema inference ([`b31c11d`](https://github.com/markm-io/dataframe-schema-sync/commit/b31c11d3a3bc6afcd33f6f3f64dc77a01dbf1eea))
+
 ## v0.15.0 (2025-03-13)
 
 ### Features
