@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.15.0 (2025-03-13)
+
+### Features
+
+- Add support for standard datetime format in schema inference ([`a031a17`](https://github.com/markm-io/dataframe-schema-sync/commit/a031a17470d5b4785b2b7b7cf8662c0955d43818))
+
 ## v0.14.0 (2025-02-24)
 
 ### Features
