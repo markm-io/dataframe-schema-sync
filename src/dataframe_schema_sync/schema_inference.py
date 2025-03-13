@@ -327,6 +327,13 @@ class SchemaInference:
             # When there is no non-null value, default to Text and use safe conversion so NaN becomes an empty cell.
             return Text(), series.apply(SchemaInference.safe_str_conversion)
 
+        # If column is already datetime type, return DateTime type
+        if pd.api.types.is_datetime64_any_dtype(series):
+            # Ensure timezone awareness
+            if series.dt.tz is None:
+                return DateTime(timezone=True), pd.to_datetime(series, utc=True)
+            return DateTime(timezone=True), series
+
         sample = non_null.iloc[0]
 
         # --- JSON-like objects ---
