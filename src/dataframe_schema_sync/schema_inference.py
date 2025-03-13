@@ -228,6 +228,7 @@ class SchemaInference:
         Supports:
           - ISO 8601 formats (YYYY-MM-DDTHH:MM:SS.sssZ)
           - RFC 2822 (email/HTTP format)
+          - Standard datetime format (YYYY-MM-DD HH:MM:SS.sss)
         Returns the converted series and a boolean indicating success.
         """
         # Use only non-null values for detection.
@@ -235,14 +236,40 @@ class SchemaInference:
         if non_null.empty:
             return pd.Series(pd.NaT, index=series.index, dtype="datetime64[ns, UTC]"), False
 
+        # Check if series looks like a standard datetime (YYYY-MM-DD HH:MM:SS.sss)
+        # This format check comes first to catch your specific format
+        if isinstance(non_null.iloc[0], str) and len(non_null.iloc[0]) >= 19:
+            sample = non_null.iloc[0]
+            if (
+                len(sample) >= 19
+                and sample[4] == "-"
+                and sample[7] == "-"
+                and sample[10] == " "
+                and sample[13] == ":"
+                and sample[16] == ":"
+            ):
+                try:
+                    parsed_dates = pd.to_datetime(non_null, format="%Y-%m-%d %H:%M:%S.%f", errors="coerce", utc=True)
+                    if parsed_dates.notna().all():
+                        # Apply conversion to the full series
+                        result = pd.Series(pd.NaT, index=series.index, dtype="datetime64[ns, UTC]")
+                        result[series.notna()] = pd.to_datetime(
+                            series[series.notna()], format="%Y-%m-%d %H:%M:%S.%f", errors="coerce", utc=True
+                        )
+                        return result, True
+                except Exception as e:
+                    logger.debug(f"Error parsing standard datetime format: {e}")
+
         try:
             # Attempt ISO 8601 conversion
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", UserWarning)
                 parsed_dates = pd.to_datetime(non_null, errors="coerce", utc=True)
             # Check only the non-null values.
-            if parsed_dates[series.notna()].notna().all():
-                return parsed_dates, True
+            if parsed_dates.notna().all():
+                result = pd.Series(pd.NaT, index=series.index, dtype="datetime64[ns, UTC]")
+                result[series.notna()] = pd.to_datetime(series[series.notna()], errors="coerce", utc=True)
+                return result, True
         except Exception as e:
             logger.debug(f"Error parsing ISO 8601 datetime format: {e}")
 
