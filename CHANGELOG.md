@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.17.0 (2025-03-13)
+
+### Features
+
+- Improve datetime handling in schema inference for timezone awareness ([`a702b80`](https://github.com/markm-io/dataframe-schema-sync/commit/a702b8039205d0c45cef8615f7375bb57de09b9b))
+
 ## v0.16.0 (2025-03-13)
 
 ### Features
