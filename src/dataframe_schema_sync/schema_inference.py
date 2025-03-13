@@ -314,6 +314,14 @@ class SchemaInference:
         Returns:
             tuple: (SQLAlchemy type, transformed Pandas Series)
         """
+        # Normalize date_columns to a list if provided
+        date_cols_list = []
+        if date_columns is not None:
+            if isinstance(date_columns, str):
+                date_cols_list = [date_columns]
+            else:
+                date_cols_list = date_columns
+
         non_null = series.dropna()
         if non_null.empty:
             # When there is no non-null value, default to Text and use safe conversion so NaN becomes an empty cell.
@@ -341,6 +349,28 @@ class SchemaInference:
             converted = series.astype(str).str.lower().str.strip().map(lambda x: x in true_vals)
             return Boolean(), converted
 
+        # --- DateTime Conversion --- (Moved before numeric conversion)
+        if infer_dates or (date_cols_list and series.name in date_cols_list):
+            # Quick check if this looks like a datetime string before attempting full conversion
+            if isinstance(sample, str) and len(sample) >= 19:
+                # Check for common datetime pattern YYYY-MM-DD HH:MM:SS
+                if (
+                    sample[4] == "-"
+                    and sample[7] == "-"
+                    and (sample[10] == " " or sample[10] == "T")
+                    and sample[13] == ":"
+                    and sample[16] == ":"
+                ):
+                    converted_series, is_datetime = SchemaInference.detect_and_convert_datetime(series)
+                    if is_datetime:
+                        return DateTime(timezone=True), converted_series
+
+            # If not caught by the quick check but specified as a date column, try conversion anyway
+            if date_cols_list and series.name in date_cols_list:
+                converted_series, is_datetime = SchemaInference.detect_and_convert_datetime(series)
+                if is_datetime:
+                    return DateTime(timezone=True), converted_series
+
         # --- Numeric conversion ---
         try:
             numeric_series = pd.to_numeric(series, errors="raise")
@@ -350,8 +380,8 @@ class SchemaInference:
         except Exception as e:
             logger.debug(f"Error parsing numeric values: {e}")
 
-        # --- DateTime Conversion ---
-        if infer_dates or (date_columns and series.name in date_columns):
+        # --- Final DateTime Attempt --- (For cases not caught by the quick check)
+        if infer_dates and not (date_cols_list and series.name in date_cols_list):
             converted_series, is_datetime = SchemaInference.detect_and_convert_datetime(series)
             if is_datetime:
                 return DateTime(timezone=True), converted_series
