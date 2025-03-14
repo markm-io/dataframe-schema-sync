@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.21.1 (2025-03-14)
+
+### Bug fixes
+
+- Enhance clean_dataframe_names to support cleaning index names for both regular and multiindex dataframes ([`49233e8`](https://github.com/markm-io/dataframe-schema-sync/commit/49233e82c8f068803a80690391637e672ebd8fdb))
+
 ## v0.21.0 (2025-03-14)
 
 ### Features
