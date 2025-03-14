@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.21.4 (2025-03-14)
+
+### Bug fixes
+
+- Simplify boolean value detection by removing redundant unique value checks ([`62b6572`](https://github.com/markm-io/dataframe-schema-sync/commit/62b657240a9ff7305539201d8efd671f0865ffb0))
+
 ## v0.21.3 (2025-03-14)
 
 ### Bug fixes
