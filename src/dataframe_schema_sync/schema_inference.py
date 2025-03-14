@@ -437,16 +437,16 @@ class SchemaInference:
             date_columns = []
 
         # Determine the schema mapping.
-        dtype_map = {}
+        schema_map = {}
         for col in cleaned_df.columns:
             sql_type, converted_series = SchemaInference.infer_sqlalchemy_type(
                 cleaned_df[col], infer_dates=infer_dates or (col in date_columns), date_columns=date_columns
             )
-            dtype_map[col] = sql_type
+            schema_map[col] = sql_type
             cleaned_df[col] = converted_series
 
         # Update the DataFrame columns based on the inferred SQLAlchemy types.
-        for col, sql_type in dtype_map.items():
+        for col, sql_type in schema_map.items():
             if isinstance(sql_type, DateTime):
                 # Ensure datetime columns are in datetime64[ns, UTC]
                 try:
@@ -465,7 +465,7 @@ class SchemaInference:
                 cleaned_df[col] = cleaned_df[col].apply(SchemaInference.safe_str_conversion)
 
         return SchemaConversionResult(
-            df=cleaned_df, dtype_map=dtype_map, renamed_columns_mapping=renamed_columns_mapping
+            df=cleaned_df, schema_map=schema_map, renamed_columns_mapping=renamed_columns_mapping
         )
 
     @staticmethod
@@ -496,22 +496,22 @@ class SchemaInference:
 class SchemaConversionResult:
     """Class to hold the results of a DataFrame schema conversion."""
 
-    def __init__(self, df: pd.DataFrame, dtype_map: dict[str, Any], renamed_columns_mapping: dict[str, str]):
+    def __init__(self, df: pd.DataFrame, schema_map: dict[str, Any], renamed_columns_mapping: dict[str, str]):
         """
         Initialize a schema conversion result.
 
         Args:
             df (pd.DataFrame): The converted DataFrame
-            dtype_map (dict): Dictionary mapping columns to SQLAlchemy types
+            schema_map (dict): Dictionary mapping columns to SQLAlchemy types
             renamed_columns_mapping (dict): Dictionary mapping original column names to new column names
         """
-        self.df = df
-        self.dtype_map = dtype_map
-        self.column_mapping = renamed_columns_mapping
+        self.dataframe = df
+        self.schema_map = schema_map
+        self.renamed_columns_mapping = renamed_columns_mapping
 
     def __iter__(self) -> Iterator[Any]:
         """
         Make the class iterable to support tuple unpacking.
-        Returns the DataFrame, dtype_map, and column_mapping in that order.
+        Returns the DataFrame, schema_map, and renamed_columns_mapping in that order.
         """
-        return iter([self.df, self.dtype_map, self.column_mapping])
+        return iter([self.dataframe, self.schema_map, self.renamed_columns_mapping])
