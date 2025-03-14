@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.19.1 (2025-03-14)
+
+### Bug fixes
+
+- Rename dtype_map to schema_map for clarity in schema conversion results ([`08268da`](https://github.com/markm-io/dataframe-schema-sync/commit/08268da35dddc8485dd2425ea5eae8c8b0e9d7b9))
+
 ## v0.19.0 (2025-03-14)
 
 ### Features
