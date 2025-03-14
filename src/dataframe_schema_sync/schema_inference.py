@@ -9,7 +9,6 @@ from typing import Any, ClassVar, Optional, Union
 import numpy as np
 import pandas as pd
 import yaml  # type: ignore
-from janitor import clean_names
 from sqlalchemy import Boolean, DateTime, Float, Integer, Text
 from sqlalchemy.dialects.postgresql import JSON
 
@@ -425,7 +424,7 @@ class SchemaInference:
 
         # Clean column names
         cleaned_df = df.copy()
-        cleaned_df = clean_names(cleaned_df, case_type=case, truncate_limit=truncate_limit)
+        cleaned_df = SchemaInference.clean_dataframe_names(cleaned_df, case=case, truncate_limit=truncate_limit)
 
         # Create mapping of original to cleaned column names
         renamed_columns_mapping = dict(zip(original_columns, cleaned_df.columns))
