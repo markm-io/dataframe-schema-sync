@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.19.0 (2025-03-14)
+
+### Features
+
+- Rename column mapping variable for clarity in schema conversion ([`6022931`](https://github.com/markm-io/dataframe-schema-sync/commit/602293143688ba7b159816805e9f2849235529c7))
+
 ## v0.18.0 (2025-03-14)
 
 ### Features
