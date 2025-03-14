@@ -470,16 +470,16 @@ class SchemaInference:
     @staticmethod
     def clean_dataframe_names(df: pd.DataFrame, case: str = "snake", truncate_limit: int = 55) -> pd.DataFrame:
         """
-        Clean the column names of a DataFrame using pyjanitors clean_names method.
-        Preserves the original index by temporarily resetting it.
+        Clean the column names and index names of a DataFrame using pyjanitors clean_names method.
+        Works with both regular Index and MultiIndex.
 
         Args:
-            df (pd.DataFrame): The DataFrame whose column names should be cleaned.
+            df (pd.DataFrame): The DataFrame whose column and index names should be cleaned.
             case (str): The naming convention to apply. Default is "snake".
             truncate_limit (int): The maximum length of the column names. Default is 55.
 
         Returns:
-            pd.DataFrame: A new DataFrame with cleaned column names and original index restored.
+            pd.DataFrame: A new DataFrame with cleaned column and index names.
 
         Raises:
             ImportError: If pyjanitors is not installed.
@@ -490,17 +490,37 @@ class SchemaInference:
             logger.error("pyjanitors is required for cleaning names. Please install it using 'pip install pyjanitor'")
             raise e
 
-        # Store the original index
-        original_index = df.index.copy()
-
-        # Reset index to avoid it becoming a column during clean_names
-        temp_df = df.reset_index(drop=True)
-
         # Clean the column names
-        cleaned_df = temp_df.clean_names(case_type=case, truncate_limit=truncate_limit)
+        cleaned_df = df.clean_names(case_type=case, truncate_limit=truncate_limit)
 
-        # Restore the original index
-        cleaned_df.index = original_index
+        # Handle index names
+        if df.index.name is not None:
+            # For single indexes with a name
+            # Create a temporary dataframe with just the index as a column
+            temp_df = pd.DataFrame({df.index.name: df.index})
+            cleaned_temp_df = temp_df.clean_names(case_type=case, truncate_limit=truncate_limit)
+            # The first and only column name is our cleaned index name
+            cleaned_index_name = cleaned_temp_df.columns[0]
+            # Set the index name to the cleaned version
+            cleaned_df.index.name = cleaned_index_name
+        elif hasattr(df.index, "names") and any(name is not None for name in df.index.names):
+            # For MultiIndex with at least some named levels
+            index_names = df.index.names
+            cleaned_index_names = []
+
+            for name in index_names:
+                if name is not None:
+                    # Create a temporary dataframe with just this index name
+                    temp_df = pd.DataFrame({name: [0]})
+                    cleaned_temp_df = temp_df.clean_names(case_type=case, truncate_limit=truncate_limit)
+                    # The cleaned name is the new column name
+                    cleaned_index_names.append(cleaned_temp_df.columns[0])
+                else:
+                    # Keep None for unnamed levels
+                    cleaned_index_names.append(None)
+
+            # Set the new index names
+            cleaned_df.index.names = cleaned_index_names
 
         return cleaned_df
 
