@@ -472,6 +472,7 @@ class SchemaInference:
     def clean_dataframe_names(df: pd.DataFrame, case: str = "snake", truncate_limit: int = 55) -> pd.DataFrame:
         """
         Clean the column names of a DataFrame using pyjanitors clean_names method.
+        Preserves the original index by temporarily resetting it.
 
         Args:
             df (pd.DataFrame): The DataFrame whose column names should be cleaned.
@@ -479,7 +480,7 @@ class SchemaInference:
             truncate_limit (int): The maximum length of the column names. Default is 55.
 
         Returns:
-            pd.DataFrame: A new DataFrame with cleaned column names.
+            pd.DataFrame: A new DataFrame with cleaned column names and original index restored.
 
         Raises:
             ImportError: If pyjanitors is not installed.
@@ -490,7 +491,19 @@ class SchemaInference:
             logger.error("pyjanitors is required for cleaning names. Please install it using 'pip install pyjanitor'")
             raise e
 
-        return df.clean_names(case_type=case, truncate_limit=truncate_limit)
+        # Store the original index
+        original_index = df.index.copy()
+
+        # Reset index to avoid it becoming a column during clean_names
+        temp_df = df.reset_index(drop=True)
+
+        # Clean the column names
+        cleaned_df = temp_df.clean_names(case_type=case, truncate_limit=truncate_limit)
+
+        # Restore the original index
+        cleaned_df.index = original_index
+
+        return cleaned_df
 
 
 class SchemaConversionResult:
