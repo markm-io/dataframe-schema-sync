@@ -344,12 +344,8 @@ class SchemaInference:
         if pd.api.types.is_bool_dtype(series):
             return Boolean(), series
 
-        unique_vals = set(non_null.dropna().unique())
-        if unique_vals.issubset({0, 1}):
-            return Boolean(), series.astype(bool)
-
-        true_vals = {"true", "t", "yes", "y", "1"}
-        false_vals = {"false", "f", "no", "n", "0"}
+        true_vals = {"true", "t"}
+        false_vals = {"false", "f"}
         lower_non_null = non_null.astype(str).str.lower().str.strip()
 
         if lower_non_null.isin(true_vals.union(false_vals)).all():
