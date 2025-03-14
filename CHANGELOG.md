@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.18.0 (2025-03-14)
+
+### Features
+
+- Make schema inference class iterable for tuple unpacking ([`0b0b2a7`](https://github.com/markm-io/dataframe-schema-sync/commit/0b0b2a7065a1a3cee81a6680414b794310a21e35))
+- Refactor schema inference to return structured result object with column mappings ([`b68fddf`](https://github.com/markm-io/dataframe-schema-sync/commit/b68fddf42825c547aab2d1d5c355520019637c0c))
+
 ## v0.17.0 (2025-03-13)
 
 ### Features
