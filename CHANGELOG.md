@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.21.2 (2025-03-14)
+
+### Bug fixes
+
+- Drop columns with all nan values before cleaning names in dataframe ([`936b98c`](https://github.com/markm-io/dataframe-schema-sync/commit/936b98c1ef1df454c58d2402128803f12bc6b48e))
+
 ## v0.21.1 (2025-03-14)
 
 ### Bug fixes

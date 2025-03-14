@@ -4,7 +4,7 @@ requires = [ "setuptools" ]
 
 [project]
 name = "dataframe-schema-sync"
-version = "0.21.1"
+version = "0.21.2"
 description = "This package will read a dataframe and will infer data types while storing the structure for later retrieval"
 readme = "README.md"
 license = { text = "MIT" }
