@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.20.0 (2025-03-14)
+
+### Features
+
+- Enhance clean_dataframe_names to preserve original index during column name cleaning ([`de48966`](https://github.com/markm-io/dataframe-schema-sync/commit/de48966ee2c841bacd596a98ecb95cf83b9e85d5))
+
 ## v0.19.1 (2025-03-14)
 
 ### Bug fixes

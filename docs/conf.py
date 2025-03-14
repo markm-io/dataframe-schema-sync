@@ -15,7 +15,7 @@ from sphinx.ext import apidoc
 project = "Dataframe Schema Sync"
 copyright = "2025, Mark Moreno"
 author = "Mark Moreno"
-release = "0.19.1"
+release = "0.20.0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
