@@ -1,6 +1,7 @@
 import json
 import logging
 import warnings
+from collections.abc import Iterator
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any, ClassVar, Optional, Union
@@ -505,3 +506,10 @@ class SchemaConversionResult:
         self.df = df
         self.dtype_map = dtype_map
         self.column_mapping = column_mapping
+
+    def __iter__(self) -> Iterator[Any]:
+        """
+        Make the class iterable to support tuple unpacking.
+        Returns the DataFrame, dtype_map, and column_mapping in that order.
+        """
+        return iter([self.df, self.dtype_map, self.column_mapping])
