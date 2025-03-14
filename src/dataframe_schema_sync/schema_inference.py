@@ -428,7 +428,7 @@ class SchemaInference:
         cleaned_df = clean_names(cleaned_df, case_type=case, truncate_limit=truncate_limit)
 
         # Create mapping of original to cleaned column names
-        column_mapping = dict(zip(original_columns, cleaned_df.columns))
+        renamed_columns_mapping = dict(zip(original_columns, cleaned_df.columns))
 
         # Normalize date_columns to a list if provided as a string.
         if isinstance(date_columns, str):
@@ -464,7 +464,9 @@ class SchemaInference:
             else:
                 cleaned_df[col] = cleaned_df[col].apply(SchemaInference.safe_str_conversion)
 
-        return SchemaConversionResult(df=cleaned_df, dtype_map=dtype_map, column_mapping=column_mapping)
+        return SchemaConversionResult(
+            df=cleaned_df, dtype_map=dtype_map, renamed_columns_mapping=renamed_columns_mapping
+        )
 
     @staticmethod
     def clean_dataframe_names(df: pd.DataFrame, case: str = "snake", truncate_limit: int = 55) -> pd.DataFrame:
@@ -494,18 +496,18 @@ class SchemaInference:
 class SchemaConversionResult:
     """Class to hold the results of a DataFrame schema conversion."""
 
-    def __init__(self, df: pd.DataFrame, dtype_map: dict[str, Any], column_mapping: dict[str, str]):
+    def __init__(self, df: pd.DataFrame, dtype_map: dict[str, Any], renamed_columns_mapping: dict[str, str]):
         """
         Initialize a schema conversion result.
 
         Args:
             df (pd.DataFrame): The converted DataFrame
             dtype_map (dict): Dictionary mapping columns to SQLAlchemy types
-            column_mapping (dict): Dictionary mapping original column names to new column names
+            renamed_columns_mapping (dict): Dictionary mapping original column names to new column names
         """
         self.df = df
         self.dtype_map = dtype_map
-        self.column_mapping = column_mapping
+        self.column_mapping = renamed_columns_mapping
 
     def __iter__(self) -> Iterator[Any]:
         """
