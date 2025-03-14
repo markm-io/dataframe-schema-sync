@@ -403,11 +403,11 @@ class SchemaInference:
         date_columns: Optional[Union[str, list[str]]] = None,
         case: str = "snake",
         truncate_limit: int = 55,
-    ) -> tuple[pd.DataFrame, dict[str, Any]]:
+    ) -> "SchemaConversionResult":
         """
         Infer the SQLAlchemy type for each column, convert the DataFrame accordingly,
-        and optionally synchronize the schema with a YAML file. The schema in the YAML file
-        will be nested under the provided schema_name key, with the column mapping stored under the given mapping_key.
+        and return a result object with the converted DataFrame, column mappings, and
+        original-to-new column name mappings.
 
         Args:
             df (pd.DataFrame): The input DataFrame.
@@ -417,10 +417,17 @@ class SchemaInference:
             truncate_limit (int): The maximum length of the column names. Default is 55.
 
         Returns:
-            tuple: (updated DataFrame, dictionary mapping columns to SQLAlchemy types)
+            SchemaConversionResult: Object containing the DataFrame, dtype map, and column name mapping
         """
-        df = df.copy()
-        df = clean_names(df, case_type=case, truncate_limit=truncate_limit)
+        # Store original column names before cleaning
+        original_columns = df.columns.tolist()
+
+        # Clean column names
+        cleaned_df = df.copy()
+        cleaned_df = clean_names(cleaned_df, case_type=case, truncate_limit=truncate_limit)
+
+        # Create mapping of original to cleaned column names
+        column_mapping = dict(zip(original_columns, cleaned_df.columns))
 
         # Normalize date_columns to a list if provided as a string.
         if isinstance(date_columns, str):
@@ -430,37 +437,33 @@ class SchemaInference:
 
         # Determine the schema mapping.
         dtype_map = {}
-        for col in df.columns:
+        for col in cleaned_df.columns:
             sql_type, converted_series = SchemaInference.infer_sqlalchemy_type(
-                df[col], infer_dates=infer_dates or (col in date_columns), date_columns=date_columns
+                cleaned_df[col], infer_dates=infer_dates or (col in date_columns), date_columns=date_columns
             )
             dtype_map[col] = sql_type
-            df[col] = converted_series
+            cleaned_df[col] = converted_series
 
         # Update the DataFrame columns based on the inferred SQLAlchemy types.
         for col, sql_type in dtype_map.items():
             if isinstance(sql_type, DateTime):
                 # Ensure datetime columns are in datetime64[ns, UTC]
                 try:
-                    df[col] = pd.to_datetime(df[col], errors="coerce", utc=True)
+                    cleaned_df[col] = pd.to_datetime(cleaned_df[col], errors="coerce", utc=True)
                 except Exception as e:
                     logger.debug(f"Error converting column {col} to datetime: {e}")
             elif isinstance(sql_type, Integer):
-                df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
+                cleaned_df[col] = pd.to_numeric(cleaned_df[col], errors="coerce").astype("Int64")
             elif isinstance(sql_type, Float):
-                df[col] = pd.to_numeric(df[col], errors="coerce").astype(float)
+                cleaned_df[col] = pd.to_numeric(cleaned_df[col], errors="coerce").astype(float)
             elif isinstance(sql_type, Boolean):
-                # For booleans, if the conversion might create issues with NaN,
-                # you may want to handle missing values separately.
-                df[col] = df[col].astype(bool)
+                cleaned_df[col] = cleaned_df[col].astype(bool)
             elif isinstance(sql_type, JSON):
-                # For JSON columns, use safe_json_conversion so that missing or empty values become an empty array.
-                df[col] = df[col].apply(SchemaInference.safe_json_conversion)
+                cleaned_df[col] = cleaned_df[col].apply(SchemaInference.safe_json_conversion)
             else:
-                # For text, use safe conversion so that NaN becomes an empty string.
-                df[col] = df[col].apply(SchemaInference.safe_str_conversion)
+                cleaned_df[col] = cleaned_df[col].apply(SchemaInference.safe_str_conversion)
 
-        return df, dtype_map
+        return SchemaConversionResult(df=cleaned_df, dtype_map=dtype_map, column_mapping=column_mapping)
 
     @staticmethod
     def clean_dataframe_names(df: pd.DataFrame, case: str = "snake", truncate_limit: int = 55) -> pd.DataFrame:
@@ -485,3 +488,20 @@ class SchemaInference:
             raise e
 
         return df.clean_names(case_type=case, truncate_limit=truncate_limit)
+
+
+class SchemaConversionResult:
+    """Class to hold the results of a DataFrame schema conversion."""
+
+    def __init__(self, df: pd.DataFrame, dtype_map: dict[str, Any], column_mapping: dict[str, str]):
+        """
+        Initialize a schema conversion result.
+
+        Args:
+            df (pd.DataFrame): The converted DataFrame
+            dtype_map (dict): Dictionary mapping columns to SQLAlchemy types
+            column_mapping (dict): Dictionary mapping original column names to new column names
+        """
+        self.df = df
+        self.dtype_map = dtype_map
+        self.column_mapping = column_mapping
