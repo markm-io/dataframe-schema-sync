@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.21.0 (2025-03-14)
+
+### Features
+
+- Update clean_dataframe_names call to use schemainference class for column name cleaning ([`a441330`](https://github.com/markm-io/dataframe-schema-sync/commit/a4413309e20e1401d9f48d7a1c775bf19ca9465f))
+
 ## v0.20.0 (2025-03-14)
 
 ### Features
