@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.21.5 (2025-03-15)
+
+### Bug fixes
+
+- Replace empty strings with na values in schema inference before dropping columns ([`2c59972`](https://github.com/markm-io/dataframe-schema-sync/commit/2c599725dce917db63d934f60738760ed71257ea))
+
 ## v0.21.4 (2025-03-14)
 
 ### Bug fixes
