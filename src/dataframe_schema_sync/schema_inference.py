@@ -416,6 +416,7 @@ class SchemaInference:
             SchemaConversionResult: Object containing the DataFrame, dtype map, and column name mapping
         """
 
+        df.replace("", pd.NA, inplace=True)
         df.dropna(axis=1, how="all", inplace=True)
 
         # Store original column names before cleaning
