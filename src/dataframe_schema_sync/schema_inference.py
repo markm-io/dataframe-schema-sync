@@ -1,6 +1,4 @@
 import json
-import logging
-import warnings
 from collections.abc import Iterator
 from email.utils import parsedate_to_datetime
 from pathlib import Path
@@ -11,10 +9,6 @@ import pandas as pd
 import yaml  # type: ignore
 from sqlalchemy import Boolean, DateTime, Float, Integer, Text
 from sqlalchemy.dialects.postgresql import JSON
-
-# Configure logging
-logging.basicConfig(level=logging.ERROR)
-logger = logging.getLogger(__name__)
 
 
 class SchemaInference:
@@ -61,18 +55,14 @@ class SchemaInference:
         if isinstance(x, str):
             try:
                 return json.loads(x)
-            except Exception as e:
-                logger.debug(f"Error converting JSON string: {e}")
+            except Exception:
                 return []
         # If the value is None, return an empty list.
         if x is None:
             return []
         # For numeric types or other types, try to detect if it's missing.
-        try:
-            if pd.isna(x):
-                return []
-        except Exception as e:
-            logger.debug(f"Error checking for NaN: {e}")
+        if pd.isna(x):
+            return []
         # If x is a numpy array, check its size.
         if isinstance(x, np.ndarray):
             if x.size == 0:
@@ -248,53 +238,37 @@ class SchemaInference:
                 and sample[13] == ":"
                 and sample[16] == ":"
             ):
-                try:
-                    parsed_dates = pd.to_datetime(non_null, format="%Y-%m-%d %H:%M:%S.%f", errors="coerce", utc=True)
-                    if parsed_dates.notna().all():
-                        # Apply conversion to the full series
-                        result = pd.Series(pd.NaT, index=series.index, dtype="datetime64[ns, UTC]")
-                        result[series.notna()] = pd.to_datetime(
-                            series[series.notna()], format="%Y-%m-%d %H:%M:%S.%f", errors="coerce", utc=True
-                        )
-                        return result, True
-                except Exception as e:
-                    logger.debug(f"Error parsing standard datetime format: {e}")
+                parsed_dates = pd.to_datetime(non_null, format="%Y-%m-%d %H:%M:%S.%f", errors="coerce", utc=True)
+                if parsed_dates.notna().all():
+                    # Apply conversion to the full series
+                    result = pd.Series(pd.NaT, index=series.index, dtype="datetime64[ns, UTC]")
+                    result[series.notna()] = pd.to_datetime(
+                        series[series.notna()], format="%Y-%m-%d %H:%M:%S.%f", errors="coerce", utc=True
+                    )
+                    return result, True
 
-        try:
-            # Attempt ISO 8601 conversion
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", UserWarning)
-                parsed_dates = pd.to_datetime(non_null, errors="coerce", utc=True)
-            # Check only the non-null values.
-            if parsed_dates.notna().all():
-                result = pd.Series(pd.NaT, index=series.index, dtype="datetime64[ns, UTC]")
-                result[series.notna()] = pd.to_datetime(series[series.notna()], errors="coerce", utc=True)
-                return result, True
-        except Exception as e:
-            logger.debug(f"Error parsing ISO 8601 datetime format: {e}")
+        # Check only the non-null values.
+        if parsed_dates.notna().all():
+            result = pd.Series(pd.NaT, index=series.index, dtype="datetime64[ns, UTC]")
+            result[series.notna()] = pd.to_datetime(series[series.notna()], errors="coerce", utc=True)
+            return result, True
 
-        try:
-            # Attempt RFC 2822 conversion
-            parsed_dates = series.apply(
-                lambda x: parsedate_to_datetime(x).astimezone(pd.Timestamp.utc)
-                if pd.notnull(x) and isinstance(x, str)
-                else pd.NaT
-            )
-            if parsed_dates[series.notna()].notna().all():
-                return parsed_dates, True
-        except Exception as e:
-            logger.debug(f"Error parsing RFC 2822 datetime format: {e}")
+        # Attempt RFC 2822 conversion
+        parsed_dates = series.apply(
+            lambda x: parsedate_to_datetime(x).astimezone(pd.Timestamp.utc)
+            if pd.notnull(x) and isinstance(x, str)
+            else pd.NaT
+        )
+        if parsed_dates[series.notna()].notna().all():
+            return parsed_dates, True
 
-        try:
-            parsed_dates = series.apply(
-                lambda date_str: pd.NaT
-                if date_str == "0001-01-01T00:00:00Z"
-                else pd.to_datetime(date_str, errors="coerce", utc=True)
-            )
-            if parsed_dates[series.apply(lambda x: x != "0001-01-01T00:00:00Z")].notna().all():
-                return parsed_dates, True
-        except Exception as e:
-            logger.debug(f"Error parsing datetime using custom datetime function: {e}")
+        parsed_dates = series.apply(
+            lambda date_str: pd.NaT
+            if date_str == "0001-01-01T00:00:00Z"
+            else pd.to_datetime(date_str, errors="coerce", utc=True)
+        )
+        if parsed_dates[series.apply(lambda x: x != "0001-01-01T00:00:00Z")].notna().all():
+            return parsed_dates, True
 
         # If not all non-null values can be converted, do not treat the series as datetime.
         return series, False
@@ -375,13 +349,19 @@ class SchemaInference:
                     return DateTime(timezone=True), converted_series
 
         # --- Numeric conversion ---
+        # Replace silent try-except-pass with proper handling
+        numeric_conversion_successful = False
         try:
             numeric_series = pd.to_numeric(series, errors="raise")
+            numeric_conversion_successful = True
+        except (ValueError, TypeError):
+            # Cannot convert to numeric type, continuing to other type checks
+            numeric_conversion_successful = False
+
+        if numeric_conversion_successful:
             if numeric_series.dropna().apply(lambda x: float(x).is_integer()).all():
                 return Integer(), numeric_series.astype("Int64")
             return Float(), numeric_series.astype(float)
-        except Exception as e:
-            logger.debug(f"Error parsing numeric values: {e}")
 
         # --- Final DateTime Attempt --- (For cases not caught by the quick check)
         if infer_dates and not (date_cols_list and series.name in date_cols_list):
@@ -448,10 +428,7 @@ class SchemaInference:
         for col, sql_type in schema_map.items():
             if isinstance(sql_type, DateTime):
                 # Ensure datetime columns are in datetime64[ns, UTC]
-                try:
-                    cleaned_df[col] = pd.to_datetime(cleaned_df[col], errors="coerce", utc=True)
-                except Exception as e:
-                    logger.debug(f"Error converting column {col} to datetime: {e}")
+                cleaned_df[col] = pd.to_datetime(cleaned_df[col], errors="coerce", utc=True)
             elif isinstance(sql_type, Integer):
                 cleaned_df[col] = pd.to_numeric(cleaned_df[col], errors="coerce").astype("Int64")
             elif isinstance(sql_type, Float):
@@ -487,7 +464,6 @@ class SchemaInference:
         try:
             import janitor  # noqa: F401
         except ImportError as e:
-            logger.error("pyjanitors is required for cleaning names. Please install it using 'pip install pyjanitor'")
             raise e
 
         # Clean the column names
