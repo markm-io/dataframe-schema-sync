@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.21.6 (2025-03-28)
+
+### Bug fixes
+
+- Remove logging statements and error handling for json and datetime parsing ([`3ff9742`](https://github.com/markm-io/dataframe-schema-sync/commit/3ff9742194532981afaf571aa96b34a9033eec03))
+
 ## v0.21.5 (2025-03-15)
 
 ### Bug fixes
