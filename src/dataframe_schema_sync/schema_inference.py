@@ -255,17 +255,19 @@ class SchemaInference:
 
         # Attempt RFC 2822 conversion
         parsed_dates = series.apply(
-            lambda x: parsedate_to_datetime(x).astimezone(pd.Timestamp.utc)
-            if pd.notnull(x) and isinstance(x, str)
-            else pd.NaT
+            lambda x: (
+                parsedate_to_datetime(x).astimezone(pd.Timestamp.utc)
+                if pd.notnull(x) and isinstance(x, str)
+                else pd.NaT
+            )
         )
         if parsed_dates[series.notna()].notna().all():
             return parsed_dates, True
 
         parsed_dates = series.apply(
-            lambda date_str: pd.NaT
-            if date_str == "0001-01-01T00:00:00Z"
-            else pd.to_datetime(date_str, errors="coerce", utc=True)
+            lambda date_str: (
+                pd.NaT if date_str == "0001-01-01T00:00:00Z" else pd.to_datetime(date_str, errors="coerce", utc=True)
+            )
         )
         if parsed_dates[series.apply(lambda x: x != "0001-01-01T00:00:00Z")].notna().all():
             return parsed_dates, True
