@@ -6,7 +6,7 @@ from typing import Any, ClassVar, Optional, Union
 
 import numpy as np
 import pandas as pd
-import yaml  # type: ignore
+import yaml
 from sqlalchemy import Boolean, DateTime, Float, Integer, Text
 from sqlalchemy.dialects.postgresql import JSON
 
